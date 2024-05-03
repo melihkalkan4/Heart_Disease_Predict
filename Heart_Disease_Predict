@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
+# Veri setini yükle (kendi path'inize göre dünleyiniz hocam)
+data_path = 'heart_disease.csv'
+df = pd.read_csv(data_path)
+
+# Eksik değer kontrolü (varsayılan olarak eksik değer yok)
+print(df.isnull().sum())
+
+# Görselleştirme için bazı örnekler
+sns.pairplot(df, vars=['age', 'trestbps', 'chol', 'thalach', 'oldpeak'], hue="target")
+plt.show()
+
+# Heatmap
+plt.figure(figsize=(10, 10))
+sns.heatmap(df.corr(), annot=True, fmt='.2f')
+plt.show()
+
+# Veriyi ayırma
+X = df.drop('target', axis=1)
+y = df['target']
+
+# Eğitim ve test setlerine ayırma
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Özellikleri ölçeklendirme
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Model oluşturma ve ayarlama
+logreg = LogisticRegression(solver='liblinear')
+param_grid = {'C': np.logspace(-4, 4, 20), 'penalty': ['l1', 'l2']}
+clf = GridSearchCV(logreg, param_grid=param_grid, cv=5, verbose=True, n_jobs=-1)
+clf.fit(X_train_scaled, y_train)
+
+# En iyi parametreleri göster
+print("En İyi Parametreler:", clf.best_params_)
+
+# Model katsayılarını göster
+print("Model Katsayıları:", clf.best_estimator_.coef_)
+
+# Test seti üzerinde değerlendirme
+y_pred = clf.predict(X_test_scaled)
+cm = confusion_matrix(y_test, y_pred)
+ConfusionMatrixDisplay(cm).plot()
+plt.show()
+
+print(classification_report(y_test, y_pred))
+
+# Örnek vaka tahmini
+patient = np.array([[48.0, 0.0, 2.0, 130.0, 275.0, 0.0, 1.0, 139.0, 0.0, 0.2, 2.0, 0.0, 2.0]])
+patient_scaled = scaler.transform(patient)
+prediction = clf.predict(patient_scaled)
+prediction_proba = clf.predict_proba(patient_scaled)
+
+print("Hasta için Tahmin:", prediction)
+print("Tahminin Güvenilirliği:", prediction_proba)
